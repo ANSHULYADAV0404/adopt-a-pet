@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pet Adoption & Animal Shelter Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Noto+Sans+Devanagari:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <nav class="topbar">
+          <div>
+            <p class="eyebrow" data-i18n="brandEyebrow">ShelterOS India</p>
+            <h1 data-i18n="heroTitle">
+              Pet Adoption & Animal Shelter Management System
+            </h1>
+          </div>
+          <div class="topbar-actions">
+            <button id="languageToggle" class="secondary-button" type="button">
+              हिन्दी
+            </button>
+            <button id="resetData" class="ghost-button" type="button" data-i18n="resetData">
+              Reset Demo Data
+            </button>
+          </div>
+        </nav>
+
+        <div class="hero-grid">
+          <section class="hero-copy">
+            <p class="hero-kicker" data-i18n="heroKicker">
+              Built for local shelters, foster homes, and rescue teams
+            </p>
+            <p class="hero-description" data-i18n="heroDescription">
+              Track rescued animals, medical care, adoptions, and volunteers in one bilingual dashboard designed for Indian animal shelters.
+            </p>
+            <div class="hero-tags">
+              <span data-i18n="tagAnimals">Animals</span>
+              <span data-i18n="tagAdoptions">Adoptions</span>
+              <span data-i18n="tagMedical">Medical</span>
+              <span data-i18n="tagVolunteers">Volunteers</span>
+            </div>
+          </section>
+
+          <section class="summary-panel">
+            <div class="summary-card accent-orange">
+              <span data-i18n="summaryAnimals">Animals in Care</span>
+              <strong id="animalsCount">0</strong>
+            </div>
+            <div class="summary-card accent-green">
+              <span data-i18n="summaryAdoptions">Successful Adoptions</span>
+              <strong id="adoptionsCount">0</strong>
+            </div>
+            <div class="summary-card accent-blue">
+              <span data-i18n="summaryTreatment">Medical Cases</span>
+              <strong id="medicalCount">0</strong>
+            </div>
+            <div class="summary-card accent-gold">
+              <span data-i18n="summaryVolunteers">Active Volunteers</span>
+              <strong id="volunteersCount">0</strong>
+            </div>
+          </section>
+        </div>
+      </header>
+
+      <main class="dashboard">
+        <section class="panel panel-wide">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label" data-i18n="animalsLabel">Animal Registry</p>
+              <h2 data-i18n="animalsTitle">Rescued Animals</h2>
+            </div>
+            <span class="hint" data-i18n="animalsHint">Keep intake and adoption status current.</span>
+          </div>
+
+          <form id="animalForm" class="form-grid">
+            <input type="text" id="animalName" name="name" required data-placeholder-i18n="animalNamePlaceholder" placeholder="Animal name" />
+            <input type="text" id="animalSpecies" name="species" required data-placeholder-i18n="animalSpeciesPlaceholder" placeholder="Species / Breed" />
+            <input type="number" id="animalAge" name="age" min="0" required data-placeholder-i18n="animalAgePlaceholder" placeholder="Age" />
+            <select id="animalStatus" name="status" required></select>
+            <input type="text" id="animalLocation" name="location" required data-placeholder-i18n="animalLocationPlaceholder" placeholder="Shelter / Zone" />
+            <button type="submit" class="primary-button" data-i18n="addAnimal">Add Animal</button>
+          </form>
+
+          <div id="animalList" class="card-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label" data-i18n="medicalLabel">Health Desk</p>
+              <h2 data-i18n="medicalTitle">Medical Records</h2>
+            </div>
+          </div>
+
+          <form id="medicalForm" class="stack-form">
+            <select id="medicalAnimal" name="animalId" required></select>
+            <input type="text" id="medicalTreatment" name="treatment" required data-placeholder-i18n="medicalTreatmentPlaceholder" placeholder="Treatment / Diagnosis" />
+            <input type="date" id="medicalDate" name="date" required />
+            <button type="submit" class="primary-button" data-i18n="addRecord">Add Record</button>
+          </form>
+
+          <div id="medicalList" class="mini-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label" data-i18n="adoptionLabel">Adoption Desk</p>
+              <h2 data-i18n="adoptionTitle">Adoption Requests</h2>
+            </div>
+          </div>
+
+          <form id="adoptionForm" class="stack-form">
+            <select id="adoptionAnimal" name="animalId" required></select>
+            <input type="text" id="adopterName" name="adopter" required data-placeholder-i18n="adopterNamePlaceholder" placeholder="Adopter name" />
+            <input type="text" id="adopterPhone" name="phone" required data-placeholder-i18n="adopterPhonePlaceholder" placeholder="Phone number" />
+            <button type="submit" class="primary-button" data-i18n="addAdoption">Record Adoption</button>
+          </form>
+
+          <div id="adoptionList" class="mini-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-label" data-i18n="volunteerLabel">Community Support</p>
+              <h2 data-i18n="volunteerTitle">Volunteers</h2>
+            </div>
+          </div>
+
+          <form id="volunteerForm" class="stack-form">
+            <input type="text" id="volunteerName" name="name" required data-placeholder-i18n="volunteerNamePlaceholder" placeholder="Volunteer name" />
+            <input type="text" id="volunteerRole" name="role" required data-placeholder-i18n="volunteerRolePlaceholder" placeholder="Role / Skill" />
+            <input type="text" id="volunteerLanguage" name="language" required data-placeholder-i18n="volunteerLanguagePlaceholder" placeholder="Preferred language" />
+            <button type="submit" class="primary-button" data-i18n="addVolunteer">Add Volunteer</button>
+          </form>
+
+          <div id="volunteerList" class="mini-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <template id="emptyStateTemplate">
+      <div class="empty-state">
+        <p></p>
+      </div>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
