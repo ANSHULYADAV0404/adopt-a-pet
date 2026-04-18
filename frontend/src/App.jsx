@@ -1,8 +1,33 @@
 ﻿import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 
-const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const localApiBaseUrl = "http://localhost:5000/api";
+const productionApiBaseUrl = "https://adopt-a-pet-gto4.onrender.com/api";
 const sessionStorageKey = "pet-adoption-session";
+
+function resolveApiBaseUrl() {
+  const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+
+  if (configuredApiUrl) {
+    return configuredApiUrl.replace(/\/$/, "");
+  }
+
+  if (import.meta.env.DEV) {
+    return localApiBaseUrl;
+  }
+
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname.toLowerCase();
+
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return localApiBaseUrl;
+    }
+  }
+
+  return productionApiBaseUrl;
+}
+
+const apiBaseUrl = resolveApiBaseUrl();
 
 const text = {
   brand: "Adopt A Pet",

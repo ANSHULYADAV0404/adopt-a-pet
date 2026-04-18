@@ -20,10 +20,41 @@ import { requireAdmin } from "./src/middleware/requireAdmin.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const configuredOrigins = [process.env.FRONTEND_URL, process.env.FRONTEND_URLS]
+  .filter(Boolean)
+  .flatMap((value) => value.split(","))
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const defaultOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://adopt-a-pet-orcin.vercel.app"
+];
+
+const allowedOrigins = new Set([...defaultOrigins, ...configuredOrigins]);
+
+function isAllowedOrigin(origin) {
+  if (!origin) {
+    return true;
+  }
+
+  if (allowedOrigins.has(origin)) {
+    return true;
+  }
+
+  return /^https:\/\/adopt-a-pet(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(origin);
+}
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173"
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`Origin ${origin} is not allowed by CORS.`));
+    }
   })
 );
 app.use(express.json());
