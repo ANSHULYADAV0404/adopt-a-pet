@@ -134,6 +134,7 @@ const createEmptyAdoptionForm = (animalId = "") => ({ animalId, adopter: "", pho
 const createEmptyMedicalForm = (animalId = "") => ({ animalId, treatment: "", date: new Date().toISOString().slice(0, 10) });
 const emptyVolunteerForm = { name: "", role: "", language: "" };
 const entityPreviewLimit = 3;
+const activityPreviewLimit = 4;
 const createEmptyRequestForm = (session, animalId = "") => ({
   animalId,
   adopterName: session?.user?.fullName || "",
@@ -179,6 +180,11 @@ function App() {
     medicalRecords: false,
     volunteers: false
   });
+  const [expandedActivityLists, setExpandedActivityLists] = useState({
+    pendingAdmins: false,
+    users: false,
+    requests: false
+  });
 
   const currentConfig = authModes[activeAuth];
   const currentFields = currentConfig.fields;
@@ -204,6 +210,9 @@ function App() {
   const visibleAdoptions = expandedEntityLists.adoptions ? adoptions : adoptions.slice(0, entityPreviewLimit);
   const visibleMedicalRecords = expandedEntityLists.medicalRecords ? medicalRecords : medicalRecords.slice(0, entityPreviewLimit);
   const visibleVolunteers = expandedEntityLists.volunteers ? volunteers : volunteers.slice(0, entityPreviewLimit);
+  const visiblePendingAdmins = expandedActivityLists.pendingAdmins ? adminActivity.pendingAdmins : adminActivity.pendingAdmins.slice(0, activityPreviewLimit);
+  const visibleActivityUsers = expandedActivityLists.users ? adminActivity.users : adminActivity.users.slice(0, activityPreviewLimit);
+  const visibleActivityRequests = expandedActivityLists.requests ? adminActivity.requests : adminActivity.requests.slice(0, activityPreviewLimit);
 
   useEffect(() => {
     loadPublicAnimals();
@@ -446,12 +455,28 @@ function App() {
   const toggleEntityList = (listName) => {
     setExpandedEntityLists((current) => ({ ...current, [listName]: !current[listName] }));
   };
+
+  const toggleActivityList = (listName) => {
+    setExpandedActivityLists((current) => ({ ...current, [listName]: !current[listName] }));
+  };
+
   const renderEntityToggle = (listName, total, label) => {
     if (total <= entityPreviewLimit) return null;
     const isExpanded = expandedEntityLists[listName];
     const hiddenCount = total - entityPreviewLimit;
     return (
       <button className="list-toggle" type="button" onClick={() => toggleEntityList(listName)}>
+        {isExpanded ? `Show fewer ${label}` : `Show ${hiddenCount} more ${label}`}
+      </button>
+    );
+  };
+
+  const renderActivityToggle = (listName, total, label) => {
+    if (total <= activityPreviewLimit) return null;
+    const isExpanded = expandedActivityLists[listName];
+    const hiddenCount = total - activityPreviewLimit;
+    return (
+      <button className="list-toggle" type="button" onClick={() => toggleActivityList(listName)}>
         {isExpanded ? `Show fewer ${label}` : `Show ${hiddenCount} more ${label}`}
       </button>
     );
@@ -617,7 +642,7 @@ function App() {
                     <h5>Pending Admin Registrations</h5>
                     <p>{adminActivity.primaryAdmins.length ? `Original approvers: ${adminActivity.primaryAdmins.map((admin) => admin.shelterName || admin.fullName || admin.email).join(" and ")}` : "No original admins are configured yet."}</p>
                     {!adminActivity.canReviewAdminRequests && adminActivity.primaryAdmins.length ? <p>Only the original admins can approve or reject new admin requests.</p> : null}
-                    {adminActivity.pendingAdmins.length ? adminActivity.pendingAdmins.map((admin) => {
+                    {visiblePendingAdmins.length ? visiblePendingAdmins.map((admin) => {
                       const decisions = admin.adminApprovalDecisions || [];
                       const approvedCount = decisions.filter((entry) => entry.decision === "approved" && primaryAdminIds.includes(String(entry.adminId?._id || entry.adminId))).length;
                       const rejectedBy = decisions.find((entry) => entry.decision === "rejected" && primaryAdminIds.includes(String(entry.adminId?._id || entry.adminId)));
@@ -647,14 +672,17 @@ function App() {
                         </article>
                       );
                     }) : <div className="empty-state">No pending admin registrations right now.</div>}
+                    {renderActivityToggle("pendingAdmins", adminActivity.pendingAdmins.length, "pending admin requests")}
                   </section>
                   <section className="activity-column">
                     <h5>Registered Users</h5>
-                    {adminActivity.users.length ? adminActivity.users.map((user) => <article className="activity-item" key={user._id}><strong>{user.fullName || "Unnamed user"}</strong><p>{user.email}</p><p>{user.city || "City not added"} • {user.phone || "No phone"}</p></article>) : <div className="empty-state">No registered users yet.</div>}
+                    {visibleActivityUsers.length ? visibleActivityUsers.map((user) => <article className="activity-item" key={user._id}><strong>{user.fullName || "Unnamed user"}</strong><p>{user.email}</p><p>{user.city || "City not added"} • {user.phone || "No phone"}</p></article>) : <div className="empty-state">No registered users yet.</div>}
+                    {renderActivityToggle("users", adminActivity.users.length, "registered users")}
                   </section>
                   <section className="activity-column">
                     <h5>Adoption Requests</h5>
-                    {adminActivity.requests.length ? adminActivity.requests.map((request) => <article className="activity-item" key={request._id}><div className="request-row"><strong>{request.animalId?.name || "Animal removed"}</strong><span className={`status-badge status-${request.status}`}>{formatStatus(request.status)}</span></div><p>{request.userId?.fullName || request.adopterName} • {request.phone}</p><p>{request.message || "No message added."}</p><div className="status-controls"><select defaultValue={request.status} onChange={(event) => updateRequestStatus(request._id, event.target.value, request.adminNote || "")}>{requestStatusOptions.map((status) => <option key={status} value={status}>{formatStatus(status)}</option>)}</select><input placeholder="Admin note" defaultValue={request.adminNote || ""} onBlur={(event) => event.target.value !== (request.adminNote || "") && updateRequestStatus(request._id, request.status, event.target.value)} /></div></article>) : <div className="empty-state">No adoption requests yet.</div>}
+                    {visibleActivityRequests.length ? visibleActivityRequests.map((request) => <article className="activity-item" key={request._id}><div className="request-row"><strong>{request.animalId?.name || "Animal removed"}</strong><span className={`status-badge status-${request.status}`}>{formatStatus(request.status)}</span></div><p>{request.userId?.fullName || request.adopterName} • {request.phone}</p><p>{request.message || "No message added."}</p><div className="status-controls"><select defaultValue={request.status} onChange={(event) => updateRequestStatus(request._id, event.target.value, request.adminNote || "")}>{requestStatusOptions.map((status) => <option key={status} value={status}>{formatStatus(status)}</option>)}</select><input placeholder="Admin note" defaultValue={request.adminNote || ""} onBlur={(event) => event.target.value !== (request.adminNote || "") && updateRequestStatus(request._id, request.status, event.target.value)} /></div></article>) : <div className="empty-state">No adoption requests yet.</div>}
+                    {renderActivityToggle("requests", adminActivity.requests.length, "adoption requests")}
                   </section>
                 </div>
               </div>
