@@ -17,6 +17,7 @@ import { Volunteer } from "./src/models/Volunteer.js";
 import { User } from "./src/models/User.js";
 import { AdoptionRequest } from "./src/models/AdoptionRequest.js";
 import { requireAdmin } from "./src/middleware/requireAdmin.js";
+import { getPrimaryAdminApprovers } from "./src/utils/adminApproval.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -80,17 +81,30 @@ app.get("/api/dashboard", requireAdmin, async (_req, res) => {
   }
 });
 
-app.get("/api/admin/activity", requireAdmin, async (_req, res) => {
+app.get("/api/admin/activity", requireAdmin, async (req, res) => {
   try {
-    const [users, requests] = await Promise.all([
+    const [users, requests, pendingAdmins, primaryAdmins] = await Promise.all([
       User.find({ role: "user" }).select("-passwordHash").sort({ createdAt: -1 }),
       AdoptionRequest.find()
         .populate("animalId")
         .populate("userId", "fullName email city phone role createdAt")
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: -1 }),
+      User.find({ role: "admin", approvalStatus: "pending" })
+        .select("-passwordHash")
+        .populate("adminApprovalDecisions.adminId", "fullName shelterName email")
+        .sort({ approvalRequestedAt: -1, createdAt: -1 }),
+      getPrimaryAdminApprovers()
     ]);
 
-    res.json({ users, requests });
+    const primaryAdminIds = primaryAdmins.map((admin) => String(admin._id));
+
+    res.json({
+      users,
+      requests,
+      pendingAdmins,
+      primaryAdmins,
+      canReviewAdminRequests: primaryAdminIds.includes(req.auth.id)
+    });
   } catch (error) {
     res.status(500).json({ message: "Failed to load user activity.", error: error.message });
   }

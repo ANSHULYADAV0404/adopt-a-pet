@@ -33,7 +33,42 @@ const userSchema = new mongoose.Schema(
     passwordHash: {
       type: String,
       required: true
-    }
+    },
+    approvalStatus: {
+      type: String,
+      enum: ["notRequired", "pending", "approved", "rejected"],
+      default() {
+        return this.role === "admin" ? "approved" : "notRequired";
+      }
+    },
+    approvalRequestedAt: {
+      type: Date
+    },
+    approvalResolvedAt: {
+      type: Date
+    },
+    adminApprovalDecisions: [
+      {
+        adminId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true
+        },
+        decision: {
+          type: String,
+          enum: ["approved", "rejected"],
+          required: true
+        },
+        note: {
+          type: String,
+          trim: true
+        },
+        decidedAt: {
+          type: Date,
+          default: Date.now
+        }
+      }
+    ]
   },
   {
     timestamps: true

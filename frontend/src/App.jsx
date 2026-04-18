@@ -128,6 +128,7 @@ const authModes = {
 const animalStatusOptions = ["rescued", "underTreatment", "readyForAdoption", "adopted"];
 const requestStatusOptions = ["pending", "reviewing", "approved", "rejected", "completed"];
 const emptyForm = { fullName: "", email: "", password: "", shelterName: "", city: "", phone: "" };
+const emptyAdminActivity = { users: [], requests: [], pendingAdmins: [], primaryAdmins: [], canReviewAdminRequests: false };
 const emptyAnimalForm = { name: "", species: "", age: "", status: "rescued", location: "" };
 const createEmptyAdoptionForm = (animalId = "") => ({ animalId, adopter: "", phone: "", date: new Date().toISOString().slice(0, 10) });
 const createEmptyMedicalForm = (animalId = "") => ({ animalId, treatment: "", date: new Date().toISOString().slice(0, 10) });
@@ -154,7 +155,8 @@ function App() {
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [volunteers, setVolunteers] = useState([]);
   const [userRequests, setUserRequests] = useState([]);
-  const [adminActivity, setAdminActivity] = useState({ users: [], requests: [] });
+  const [adminActivity, setAdminActivity] = useState(emptyAdminActivity);
+  const [adminApprovalNotes, setAdminApprovalNotes] = useState({});
   const [crudFeedback, setCrudFeedback] = useState({ type: "", message: "" });
   const [crudLoading, setCrudLoading] = useState(false);
   const [requestFeedback, setRequestFeedback] = useState({ type: "", message: "" });
@@ -183,6 +185,7 @@ function App() {
   const isAdmin = session?.user?.role === "admin" && Boolean(session?.token);
   const isUser = session?.user?.role === "user" && Boolean(session?.token);
   const adminHeaders = useMemo(() => (session?.token ? { Authorization: `Bearer ${session.token}` } : {}), [session]);
+  const primaryAdminIds = adminActivity.primaryAdmins.map((admin) => String(admin._id));
   const readyAnimals = publicAnimals.filter((animal) => animal.status !== "adopted");
   const displayedAnimals = publicAnimals.filter((animal) => {
     const cityMatch = !searchFilters.city || animal.location.toLowerCase().includes(searchFilters.city.toLowerCase());
@@ -194,7 +197,8 @@ function App() {
     { title: "Animals in Care", value: animals.length, accent: "orange" },
     { title: "Adoptions", value: adoptions.length, accent: "red" },
     { title: "Requests", value: adminActivity.requests.length, accent: "teal" },
-    { title: "Users", value: adminActivity.users.length, accent: "ink" }
+    { title: "Users", value: adminActivity.users.length, accent: "ink" },
+    { title: "Pending Admins", value: adminActivity.pendingAdmins.length, accent: "teal" }
   ];
   const visibleAnimals = expandedEntityLists.animals ? animals : animals.slice(0, entityPreviewLimit);
   const visibleAdoptions = expandedEntityLists.adoptions ? adoptions : adoptions.slice(0, entityPreviewLimit);
@@ -214,7 +218,8 @@ function App() {
       setAdoptions([]);
       setMedicalRecords([]);
       setVolunteers([]);
-      setAdminActivity({ users: [], requests: [] });
+      setAdminActivity(emptyAdminActivity);
+      setAdminApprovalNotes({});
     }
 
     if (isUser) {
@@ -283,6 +288,12 @@ function App() {
     try {
       const response = await axios.get(`${apiBaseUrl}/admin/activity`, { headers: adminHeaders });
       setAdminActivity(response.data);
+      setAdminApprovalNotes((current) =>
+        response.data.pendingAdmins.reduce(
+          (next, admin) => ({ ...next, [admin._id]: current[admin._id] || "" }),
+          {}
+        )
+      );
     } catch (error) {
       setCrudFeedback({ type: "error", message: error.response?.data?.message || "Failed to load user activity." });
     }
@@ -313,10 +324,14 @@ function App() {
         password: formState.password
       };
       const response = await axios.post(`${apiBaseUrl}/auth/${currentConfig.endpoint}`, payload);
-      const nextSession = { user: response.data.user, token: response.data.token };
-      setSession(nextSession);
-      persistSession(nextSession);
-      setRequestForm(createEmptyRequestForm(nextSession, readyAnimals[0]?._id || ""));
+      if (response.data.token) {
+        const nextSession = { user: response.data.user, token: response.data.token };
+        setSession(nextSession);
+        persistSession(nextSession);
+        setRequestForm(createEmptyRequestForm(nextSession, readyAnimals[0]?._id || ""));
+      } else if (response.data.requiresApproval) {
+        setActiveAuth("adminLogin");
+      }
       setFeedback({ type: "success", message: response.data.message });
       setFormState(emptyForm);
     } catch (error) {
@@ -360,6 +375,29 @@ function App() {
       await Promise.all([loadAdminActivity(), loadPublicAnimals(), loadShelterData()]);
     } catch (error) {
       setCrudFeedback({ type: "error", message: error.response?.data?.message || "Failed to update request." });
+    } finally {
+      setCrudLoading(false);
+    }
+  };
+
+  const reviewAdminRequest = async (requestId, decision) => {
+    setCrudLoading(true);
+    setCrudFeedback({ type: "", message: "" });
+    try {
+      const note = adminApprovalNotes[requestId]?.trim() || "";
+      const response = await axios.patch(
+        `${apiBaseUrl}/auth/admin-requests/${requestId}`,
+        { decision, note },
+        { headers: adminHeaders }
+      );
+      setCrudFeedback({ type: "success", message: response.data.message });
+      setAdminApprovalNotes((current) => ({ ...current, [requestId]: "" }));
+      await loadAdminActivity();
+    } catch (error) {
+      setCrudFeedback({
+        type: "error",
+        message: error.response?.data?.message || "Failed to review admin registration."
+      });
     } finally {
       setCrudLoading(false);
     }
@@ -484,6 +522,7 @@ function App() {
             <form className="auth-form" onSubmit={handleSubmit}>
               {currentFields.map((field) => <label key={field} className="field"><span>{text[field]}</span><input type={field === "password" ? "password" : field === "email" ? "email" : "text"} placeholder={text[field]} value={formState[field]} onChange={(event) => setFormState({ ...formState, [field]: event.target.value })} required /></label>)}
               <p className="field-note">Portal: <strong>{currentConfig.role === "admin" ? "Admin" : "User"}</strong> • Action: <strong>{currentConfig.endpoint === "register" ? "Register" : "Login"}</strong></p>
+              {activeAuth === "adminRegister" ? <p className="field-note">New admin registrations are sent to the original two admins and become active only after both approvals are recorded.</p> : null}
               {feedback.message ? <div className={feedback.type === "success" ? "auth-feedback success" : "auth-feedback error"}>{feedback.message}</div> : null}
               <button type="submit" className="form-submit" disabled={loading}>{loading ? text.loading : text.submit}</button>
             </form>
@@ -574,6 +613,41 @@ function App() {
               <div className="activity-panel">
                 <div className="crud-head"><h4>User Activity</h4><button className="mini-action secondary-mini" type="button" onClick={loadAdminActivity}>Refresh Activity</button></div>
                 <div className="activity-grid">
+                  <section className="activity-column">
+                    <h5>Pending Admin Registrations</h5>
+                    <p>{adminActivity.primaryAdmins.length ? `Original approvers: ${adminActivity.primaryAdmins.map((admin) => admin.shelterName || admin.fullName || admin.email).join(" and ")}` : "No original admins are configured yet."}</p>
+                    {!adminActivity.canReviewAdminRequests && adminActivity.primaryAdmins.length ? <p>Only the original admins can approve or reject new admin requests.</p> : null}
+                    {adminActivity.pendingAdmins.length ? adminActivity.pendingAdmins.map((admin) => {
+                      const decisions = admin.adminApprovalDecisions || [];
+                      const approvedCount = decisions.filter((entry) => entry.decision === "approved" && primaryAdminIds.includes(String(entry.adminId?._id || entry.adminId))).length;
+                      const rejectedBy = decisions.find((entry) => entry.decision === "rejected" && primaryAdminIds.includes(String(entry.adminId?._id || entry.adminId)));
+                      return (
+                        <article className="activity-item" key={admin._id}>
+                          <strong>{admin.shelterName || "Unnamed shelter admin"}</strong>
+                          <p>{admin.email}</p>
+                          <p>{admin.city || "City not added"} • {admin.phone || "No phone"}</p>
+                          <p>{rejectedBy ? `Rejected by ${rejectedBy.adminId?.shelterName || rejectedBy.adminId?.fullName || rejectedBy.adminId?.email || "an original admin"}` : `${approvedCount}/${Math.max(adminActivity.primaryAdmins.length, 1)} original admin approvals received`}</p>
+                          {decisions.length ? decisions.map((entry) => (
+                            <p key={`${admin._id}-${entry.adminId?._id || entry.adminId}`}>
+                              {entry.adminId?.shelterName || entry.adminId?.fullName || entry.adminId?.email || "Original admin"}: {formatStatus(entry.decision)}
+                              {entry.note ? ` • ${entry.note}` : ""}
+                            </p>
+                          )) : <p>No approvals recorded yet.</p>}
+                          {adminActivity.canReviewAdminRequests ? (
+                            <div className="status-controls">
+                              <input
+                                placeholder="Approval note"
+                                value={adminApprovalNotes[admin._id] || ""}
+                                onChange={(event) => setAdminApprovalNotes((current) => ({ ...current, [admin._id]: event.target.value }))}
+                              />
+                              <button className="mini-action" type="button" disabled={crudLoading} onClick={() => reviewAdminRequest(admin._id, "approved")}>Approve</button>
+                              <button className="mini-action danger-mini" type="button" disabled={crudLoading} onClick={() => reviewAdminRequest(admin._id, "rejected")}>Reject</button>
+                            </div>
+                          ) : null}
+                        </article>
+                      );
+                    }) : <div className="empty-state">No pending admin registrations right now.</div>}
+                  </section>
                   <section className="activity-column">
                     <h5>Registered Users</h5>
                     {adminActivity.users.length ? adminActivity.users.map((user) => <article className="activity-item" key={user._id}><strong>{user.fullName || "Unnamed user"}</strong><p>{user.email}</p><p>{user.city || "City not added"} • {user.phone || "No phone"}</p></article>) : <div className="empty-state">No registered users yet.</div>}
