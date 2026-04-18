@@ -668,6 +668,12 @@ input {
   align-items: start;
 }
 
+.activity-stack {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
 .available-picker {
   display: grid;
   gap: 14px;

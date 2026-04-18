@@ -638,52 +638,56 @@ function App() {
               <div className="activity-panel">
                 <div className="crud-head"><h4>User Activity</h4><button className="mini-action secondary-mini" type="button" onClick={loadAdminActivity}>Refresh Activity</button></div>
                 <div className="activity-grid">
-                  <section className="activity-column">
-                    <h5>Pending Admin Registrations</h5>
-                    <p>{adminActivity.primaryAdmins.length ? `Original approvers: ${adminActivity.primaryAdmins.map((admin) => admin.shelterName || admin.fullName || admin.email).join(" and ")}` : "No original admins are configured yet."}</p>
-                    {!adminActivity.canReviewAdminRequests && adminActivity.primaryAdmins.length ? <p>Only the original admins can approve or reject new admin requests.</p> : null}
-                    {visiblePendingAdmins.length ? visiblePendingAdmins.map((admin) => {
-                      const decisions = admin.adminApprovalDecisions || [];
-                      const approvedCount = decisions.filter((entry) => entry.decision === "approved" && primaryAdminIds.includes(String(entry.adminId?._id || entry.adminId))).length;
-                      const rejectedBy = decisions.find((entry) => entry.decision === "rejected" && primaryAdminIds.includes(String(entry.adminId?._id || entry.adminId)));
-                      return (
-                        <article className="activity-item" key={admin._id}>
-                          <strong>{admin.shelterName || "Unnamed shelter admin"}</strong>
-                          <p>{admin.email}</p>
-                          <p>{admin.city || "City not added"} • {admin.phone || "No phone"}</p>
-                          <p>{rejectedBy ? `Rejected by ${rejectedBy.adminId?.shelterName || rejectedBy.adminId?.fullName || rejectedBy.adminId?.email || "an original admin"}` : `${approvedCount}/${Math.max(adminActivity.primaryAdmins.length, 1)} original admin approvals received`}</p>
-                          {decisions.length ? decisions.map((entry) => (
-                            <p key={`${admin._id}-${entry.adminId?._id || entry.adminId}`}>
-                              {entry.adminId?.shelterName || entry.adminId?.fullName || entry.adminId?.email || "Original admin"}: {formatStatus(entry.decision)}
-                              {entry.note ? ` • ${entry.note}` : ""}
-                            </p>
-                          )) : <p>No approvals recorded yet.</p>}
-                          {adminActivity.canReviewAdminRequests ? (
-                            <div className="status-controls">
-                              <input
-                                placeholder="Approval note"
-                                value={adminApprovalNotes[admin._id] || ""}
-                                onChange={(event) => setAdminApprovalNotes((current) => ({ ...current, [admin._id]: event.target.value }))}
-                              />
-                              <button className="mini-action" type="button" disabled={crudLoading} onClick={() => reviewAdminRequest(admin._id, "approved")}>Approve</button>
-                              <button className="mini-action danger-mini" type="button" disabled={crudLoading} onClick={() => reviewAdminRequest(admin._id, "rejected")}>Reject</button>
-                            </div>
-                          ) : null}
-                        </article>
-                      );
-                    }) : <div className="empty-state">No pending admin registrations right now.</div>}
-                    {renderActivityToggle("pendingAdmins", adminActivity.pendingAdmins.length, "pending admin requests")}
-                  </section>
-                  <section className="activity-column">
-                    <h5>Registered Users</h5>
-                    {visibleActivityUsers.length ? visibleActivityUsers.map((user) => <article className="activity-item" key={user._id}><strong>{user.fullName || "Unnamed user"}</strong><p>{user.email}</p><p>{user.city || "City not added"} • {user.phone || "No phone"}</p></article>) : <div className="empty-state">No registered users yet.</div>}
-                    {renderActivityToggle("users", adminActivity.users.length, "registered users")}
-                  </section>
-                  <section className="activity-column">
-                    <h5>Adoption Requests</h5>
-                    {visibleActivityRequests.length ? visibleActivityRequests.map((request) => <article className="activity-item" key={request._id}><div className="request-row"><strong>{request.animalId?.name || "Animal removed"}</strong><span className={`status-badge status-${request.status}`}>{formatStatus(request.status)}</span></div><p>{request.userId?.fullName || request.adopterName} • {request.phone}</p><p>{request.message || "No message added."}</p><div className="status-controls"><select defaultValue={request.status} onChange={(event) => updateRequestStatus(request._id, event.target.value, request.adminNote || "")}>{requestStatusOptions.map((status) => <option key={status} value={status}>{formatStatus(status)}</option>)}</select><input placeholder="Admin note" defaultValue={request.adminNote || ""} onBlur={(event) => event.target.value !== (request.adminNote || "") && updateRequestStatus(request._id, request.status, event.target.value)} /></div></article>) : <div className="empty-state">No adoption requests yet.</div>}
-                    {renderActivityToggle("requests", adminActivity.requests.length, "adoption requests")}
-                  </section>
+                  <div className="activity-stack">
+                    <section className="activity-column">
+                      <h5>Pending Admin Registrations</h5>
+                      <p>{adminActivity.primaryAdmins.length ? `Original approvers: ${adminActivity.primaryAdmins.map((admin) => admin.shelterName || admin.fullName || admin.email).join(" and ")}` : "No original admins are configured yet."}</p>
+                      {!adminActivity.canReviewAdminRequests && adminActivity.primaryAdmins.length ? <p>Only the original admins can approve or reject new admin requests.</p> : null}
+                      {visiblePendingAdmins.length ? visiblePendingAdmins.map((admin) => {
+                        const decisions = admin.adminApprovalDecisions || [];
+                        const approvedCount = decisions.filter((entry) => entry.decision === "approved" && primaryAdminIds.includes(String(entry.adminId?._id || entry.adminId))).length;
+                        const rejectedBy = decisions.find((entry) => entry.decision === "rejected" && primaryAdminIds.includes(String(entry.adminId?._id || entry.adminId)));
+                        return (
+                          <article className="activity-item" key={admin._id}>
+                            <strong>{admin.shelterName || "Unnamed shelter admin"}</strong>
+                            <p>{admin.email}</p>
+                            <p>{admin.city || "City not added"} • {admin.phone || "No phone"}</p>
+                            <p>{rejectedBy ? `Rejected by ${rejectedBy.adminId?.shelterName || rejectedBy.adminId?.fullName || rejectedBy.adminId?.email || "an original admin"}` : `${approvedCount}/${Math.max(adminActivity.primaryAdmins.length, 1)} original admin approvals received`}</p>
+                            {decisions.length ? decisions.map((entry) => (
+                              <p key={`${admin._id}-${entry.adminId?._id || entry.adminId}`}>
+                                {entry.adminId?.shelterName || entry.adminId?.fullName || entry.adminId?.email || "Original admin"}: {formatStatus(entry.decision)}
+                                {entry.note ? ` • ${entry.note}` : ""}
+                              </p>
+                            )) : <p>No approvals recorded yet.</p>}
+                            {adminActivity.canReviewAdminRequests ? (
+                              <div className="status-controls">
+                                <input
+                                  placeholder="Approval note"
+                                  value={adminApprovalNotes[admin._id] || ""}
+                                  onChange={(event) => setAdminApprovalNotes((current) => ({ ...current, [admin._id]: event.target.value }))}
+                                />
+                                <button className="mini-action" type="button" disabled={crudLoading} onClick={() => reviewAdminRequest(admin._id, "approved")}>Approve</button>
+                                <button className="mini-action danger-mini" type="button" disabled={crudLoading} onClick={() => reviewAdminRequest(admin._id, "rejected")}>Reject</button>
+                              </div>
+                            ) : null}
+                          </article>
+                        );
+                      }) : <div className="empty-state">No pending admin registrations right now.</div>}
+                      {renderActivityToggle("pendingAdmins", adminActivity.pendingAdmins.length, "pending admin requests")}
+                    </section>
+                    <section className="activity-column">
+                      <h5>Adoption Requests</h5>
+                      {visibleActivityRequests.length ? visibleActivityRequests.map((request) => <article className="activity-item" key={request._id}><div className="request-row"><strong>{request.animalId?.name || "Animal removed"}</strong><span className={`status-badge status-${request.status}`}>{formatStatus(request.status)}</span></div><p>{request.userId?.fullName || request.adopterName} • {request.phone}</p><p>{request.message || "No message added."}</p><div className="status-controls"><select defaultValue={request.status} onChange={(event) => updateRequestStatus(request._id, event.target.value, request.adminNote || "")}>{requestStatusOptions.map((status) => <option key={status} value={status}>{formatStatus(status)}</option>)}</select><input placeholder="Admin note" defaultValue={request.adminNote || ""} onBlur={(event) => event.target.value !== (request.adminNote || "") && updateRequestStatus(request._id, request.status, event.target.value)} /></div></article>) : <div className="empty-state">No adoption requests yet.</div>}
+                      {renderActivityToggle("requests", adminActivity.requests.length, "adoption requests")}
+                    </section>
+                  </div>
+                  <div className="activity-stack">
+                    <section className="activity-column">
+                      <h5>Registered Users</h5>
+                      {visibleActivityUsers.length ? visibleActivityUsers.map((user) => <article className="activity-item" key={user._id}><strong>{user.fullName || "Unnamed user"}</strong><p>{user.email}</p><p>{user.city || "City not added"} • {user.phone || "No phone"}</p></article>) : <div className="empty-state">No registered users yet.</div>}
+                      {renderActivityToggle("users", adminActivity.users.length, "registered users")}
+                    </section>
+                  </div>
                 </div>
               </div>
 
